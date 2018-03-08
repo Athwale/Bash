@@ -13,7 +13,7 @@ do
     sleep 1
     clear
     pmount /dev/$USB && echo -e "\033[01;32mMOUNTED OK \nPLAYING FROM USB\033[0m"
-    mplayer -really-quiet /home/gill/scripty/timer.wav 2>/dev/null
+    mplayer -really-quiet /home/$USER/scripty/timer.wav 2>/dev/null
     mplayer -really-quiet /media/usb0/*.* 2>/dev/null
   fi;
 
