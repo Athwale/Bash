@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#Erase old logs
+
+cd /var/log
+sudo rm -f `ls | grep ".*.log.[0-9]"`
+sudo rm -f `ls | grep ".*.[0-9]"`
+sudo rm -f `ls | grep ".old$"`
+sudo apt-get clean
