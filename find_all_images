@@ -1,0 +1,39 @@
+#!/bin/bash
+# Requires eom image viewer
+
+mkdir LinksToImages 2>/dev/null
+find . -name '*' -exec file {} \; | grep -o -P '^.+: \w+ image' | egrep -o '^[^:]+' | sed "s/^/'/" | sed "s|'.|$PWD|" > ./LinksToImages/image_files.txt
+
+# Count all found images
+NUMBER=`wc -l ./LinksToImages/image_files.txt`
+echo -e "\n"
+
+mkdir ./LinksToImages/links0
+cd LinksToImages/links0
+
+# Needed for link folder creation
+COUNTER=1
+
+# Make links to images do not pass the original file and store those in folders, limit the max number of links per one folder
+while read in; 
+do 
+  FILES=`ls -1 . | wc -l`
+  if [ $FILES -gt 9999 ]; then 
+    ((COUNTER++))
+    cd ..
+    mkdir links$COUNTER;
+    cd links$COUNTER;
+  fi
+  ln -s "$in" 2>/dev/null
+  # echo "$in";
+done < ../image_files.txt
+
+# Remove temp file
+rm ../image_files.txt
+
+# Print final result
+echo -e "\n"
+echo "Found $NUMBER images." | sed 's| ./LinksToImages/image_files.txt||g'
+
+#eom `ls | head -n 1`  2>/dev/null 
+
