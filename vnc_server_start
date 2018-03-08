@@ -1,0 +1,98 @@
+#!/bin/bash
+# Turns on VNC server and SSH server
+
+# First you need to create password file using vncpasswd for x0vncserver.
+# Requires: vnc4server, openssh-server
+# Only one instance of x0vncserver can run at a time
+# Allow ports 22 IN/OUT for SSH and port 5900 OUT for VNC in firewall
+
+# Using -k kills vnc server and ssh server after disconnection from the remote computer
+
+# Check variable
+x=0
+
+# Turn on SSH
+clear
+echo -e "Start up VNC server:"
+echo -e "\nSSH server START:"
+sudo service ssh start
+# Check successful start
+[ $? -eq 0 ] && echo -e "\033[01;32mOK\033[0m"; mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+[ $? -ne 0 ] && echo -e "\033[01;31mERROR\033[0m"
+echo -e "------------------\n"
+
+# Turn on VNC server using pass file
+sleep 1
+echo "VNC server START:"
+x0vncserver -PasswordFile /home/$USER/.vnc/passwd 1> /home/$USER/Scripty/x0vnc.log 2>/home/$USER/Scripty/x0vnc.log &
+[ $? -eq 0 ] && echo -e "\033[01;32mOK\033[0m"; mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+[ $? -ne 0 ] && echo -e "\033[01;31mERROR\033[0m"
+echo -e "------------------\n"
+
+# Get x0vncserver PID
+sleep 1
+echo "VNC server PID:"
+echo `ps ux | grep "x0vncserver -PasswordFile /home/$USER/.vnc/passwd$"` | cut -d" " -f 2 > /home/$USER/Scripty/PID_temp.txt
+[ $? -eq 0 ] && echo -e "\033[01;32mOK\033[0m"; mplayer - < /home/$USER/Scripty/timer.wav 2>/dev/null 1>/dev/null &
+[ $? -ne 0 ] && echo -e "\033[01;31mERROR\033[0m"
+PID=`cat /home/$USER/Scripty/PID_temp.txt`
+echo "x0vncserver PID: $PID"
+rm /home/$USER/Scripty/PID_temp.txt
+# Get port
+echo x0vncserver PORT: `grep -o "Listening on port.*" /home/$USER/Scripty/x0vnc.log | cut -d" " -f 4`
+echo -e "\033[01;32mRUNNING\033[0m"
+
+# Check VNC server running every 10s
+while [ $x -eq 0 ];
+do
+  sleep 5
+  # Check disconnection then kill server and SSH
+  x=`grep -c "(Clean disconnection)" /home/$USER/Scripty/x0vnc.log`
+  ps ux | grep "x0vncserver -PasswordFile /home/$USER/.vnc/passwd$" 1>/dev/null || x=2
+done
+
+echo -e "------------------\n"
+
+if [ "$1" == "-k" ]; 
+  then
+    # If the connection was killed from remote computer
+    if [ $x -eq 1 ];
+    then
+      echo -e "\033[01;31mVNC server KILL (Clean disconnection):\033[0m"
+      echo "KILL VNC server"
+      kill $PID
+      [ $? -eq 0 ] && echo -e "\033[01;32mOK\033[0m"; mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+      [ $? -ne 0 ] && echo -e "\033[01;31mERROR\033[0m"
+
+      sleep 1
+
+      echo -e "\nSTOP SSH service"
+      sudo service ssh stop
+      [ $? -eq 0 ] && echo -e "\033[01;32mOK\033[0m"; mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+      [ $? -ne 0 ] && echo -e "\033[01;31mERROR\033[0m"
+    fi;
+
+    # If the connection was killed from this computer
+    if [ $x -eq 2 ];
+    then
+      echo -e "\033[01;31mVNC server KILL from host PC:\033[0m"
+      echo -e "STOP SSH service"
+      sudo service ssh stop
+      [ $? -eq 0 ] && echo -e "\033[01;32mOK\033[0m"; mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+      [ $? -ne 0 ] && echo -e "\033[01;31mERROR\033[0m"
+    fi;
+fi;
+
+if [ "$1" != "-k" ]; 
+then
+  echo -e "\033[01;31mVNC and SSH still running\033[0m"
+  mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+  echo -e "\n\033[01;32mUse - kill $PID - to stop VNC\033[0m"
+  mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+  echo -e "\n\033[01;32mUse - sudo service ssh stop - to stop SSH\033[0m"
+  mplayer - < /home/$USER/Scripty/timer1.wav 2>/dev/null 1>/dev/null &
+fi;
+
+echo -e "------------------\n"
+rm /home/$USER/Scripty/x0vnc.log
+#
