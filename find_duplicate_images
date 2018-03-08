@@ -1,0 +1,8 @@
+#!/bin/bash
+#Finds all duplicate images in a given directory and displays them in geeqie where you can directly delete them. 
+#This script requires image viewer "geeqie" and a program "findimagedupes".
+#The process happens on the 2nd virtual screen.
+wmctrl -s 1
+findimagedupes -R -c=duplicates.gqv  ./
+geeqie duplicates.gqv 
+rm duplicates.gqv
