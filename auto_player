@@ -1,0 +1,33 @@
+#!/bin/bash
+# This script is used to automatically play internet radio broadcast and if a flas drive is inserted into a usb port
+# then to automatically play songs from it.
+
+clear
+while [ true ];
+do
+  sleep 1
+  USB=`ls /dev | grep 'sdb1'`
+  if [ $? -eq 0 ]
+  then
+    pkill mplayer
+    sleep 1
+    clear
+    pmount /dev/$USB && echo -e "\033[01;32mMOUNTED OK \nPLAYING FROM USB\033[0m"
+    mplayer -really-quiet /home/gill/scripty/timer.wav 2>/dev/null
+    mplayer -really-quiet /media/usb0/*.* 2>/dev/null
+  fi;
+
+  if [ `ps aux | grep -c "mplayer"` -gt 1 ]
+  then
+   clear
+   echo -e "\033[01;32mNO USB DISK TO PLAY \nPLAYING RADIO BEAT\033[0m"
+   sleep 1
+   continue
+  fi;
+
+  clear
+  echo -e "\033[01;32mNO USB DISK TO PLAY \nPLAYING RADIO BEAT\033[0m"
+
+  pumount /dev/$USB
+  mplayer -cache-min 30 http://icecast2.play.cz/radiobeat128.mp3 2>/dev/null &
+done
