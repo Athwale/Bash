@@ -1,0 +1,263 @@
+#!/bin/bash
+#POTREBUJE mplayer K PREHRAVANI ZVUKU
+#chyby pri prechodu mezi horni a spodni hranici
+
+#fronta pro souradnice ocasu
+touch tail
+
+#pozice kurzoru
+XSET=0
+YSET=12
+#pocet uchovavanych ocasu
+TAIL=2
+#limitace psani do souboru s ocasem
+NUMT=0
+#zaloha klavesy pokud se zmackne spatna
+BKEY=p
+#pocet umistovanych objektu
+OBJ=0
+#casovac vytvareni objektu
+TIMER=0
+#zamky opacnych klaves
+WLOCK=0
+SLOCK=0
+ALOCK=0
+DLOCK=0
+#kontrola kousnuti
+BITE=0
+#promene pro kontrolu nekousnuti
+NUMLINES=0
+CORRECT=0
+#score
+SCORE=2
+
+#prvni klavesa pro zacatek cyklu
+clear
+echo -e "Ovladani pomoci klaves WASD a Q \n\n\n\n\n\n\n\n\n\n\n0"
+read -a KEY -s -n 1
+clear
+
+#smycka hry
+while [ "${KEY[0]}" != "q" ];
+do
+  #umisteni objektu hashujeme do prostoru okna podle poctu nanosekund
+  while [ "$OBJ" -ge 0 ];
+  do
+    OY=`date +"%N"`
+    OY=`expr  $OY % 23`
+
+    OX=`date +"%N"`
+    OX=`expr $OX % 79`
+
+    #nechci kreslit objekty na okraji okna
+    if [ "$OX" -eq 0 ];
+    then
+      OX=1
+    fi;
+
+    if [ "$OY" -eq 0 ];
+    then
+      OY=1
+    fi;
+
+    #nakresli objekt na urcenych souradnicich
+    echo -n -e "\033[$OY;`echo -n $OX`f*"
+
+    #shozeni pocitadla
+    OBJ=`expr $OBJ - 1`
+  done
+
+  #Uprava souradnic pozice kurzoru a kontrola konce obrazovky
+  #pokud je zmacknuta klavesa nesmi jit zmacknout opacna NENI pouzito
+  #opacna klavesa se bere jako kousnuti se za krk :-)
+  case "${KEY[0]}" in
+
+  d)
+  XSET=`expr $XSET + 1`
+  DLOCK=1
+  WLOCK=0
+  SLOCK=0
+  if [ "$ALOCK" -eq 1 ];
+  then
+    XSET=`expr $XSET - 1`
+    #nastavit DLOCK zpet na 0 aby se nezablokovala opacna klavesa jelikoz D
+    #nema jit zmacknout
+    DLOCK=0
+    #vraceni puvodni klavesy aby se pokracovalo spravnym smerem
+    KEY[0]=a
+    TAIL=`expr $TAIL + 1`
+    CORRECT=`expr $CORRECT + 1`
+  fi;
+
+  BKEY=${KEY[0]}
+    if [ "$XSET" -gt 80 ];
+    then
+      XSET=0
+    fi;
+  ;;
+
+  a)
+  XSET=`expr $XSET - 1`
+  ALOCK=1
+  WLOCK=0
+  SLOCK=0
+  if [ "$DLOCK" -eq 1 ];
+  then
+    XSET=`expr $XSET + 1`
+    ALOCK=0
+    KEY[0]=d
+    TAIL=`expr $TAIL + 1`
+    CORRECT=`expr $CORRECT + 1`
+  fi;
+
+  BKEY=${KEY[0]}
+    if [ "$XSET" -lt 0 ];
+    then
+      XSET=80
+    fi;
+  ;;
+
+  s)
+  YSET=`expr $YSET + 1`
+  WLOCK=1
+  DLOCK=0
+  ALOCK=0
+  if [ "$SLOCK" -eq 1 ];
+  then
+    YSET=`expr $YSET - 1`
+    WLOCK=0
+    KEY[0]=w
+    TAIL=`expr $TAIL + 1`
+    CORRECT=`expr $CORRECT + 1`
+  fi;
+
+  BKEY=${KEY[0]}
+    if [ "$YSET" -gt 24 ];
+    then
+      YSET=0
+    fi;
+  ;;
+
+  w)
+  YSET=`expr $YSET - 1`
+  SLOCK=1
+  DLOCK=0
+  ALOCK=0
+  if [ "$WLOCK" -eq 1 ];
+  then
+    YSET=`expr $YSET + 1`
+    SLOCK=0
+    KEY[0]=s
+    TAIL=`expr $TAIL + 1`
+    CORRECT=`expr $CORRECT + 1`
+  fi;
+
+  BKEY=${KEY[0]}
+    if [ "$YSET" -lt 0 ];
+    then
+      YSET=25
+    fi;
+  ;;
+
+  *)
+  #pokud se zmackne klavesa mimo je potreba vratit predchozi spravnou a zacit
+  #switch znovu, jinak by zustala nastavena spatna souradnice
+  KEY[0]=$BKEY
+  continue
+  ;;
+  esac;
+
+  #pokud pocet ulozenych ocasu dosahne poctu ocasu zacni znovu a posledni smaz
+  if [ "$NUMT" -eq `expr $TAIL + 1` ];
+  then
+    #nacti pouze prvni radek
+    #X souradnice
+    X=`grep -m 1 "^0;" tail | grep -o ';.*;' | sed 's/;//g'`
+    #Y souradnice
+    Y=`grep -m 1 "^0" tail | sed "s/.*;//g"`
+
+    #smaz posledni ocas
+    echo -n -e "\033[$Y;`echo -n $X`f "
+
+    #smaz pouzity radek
+    RADEK=`grep -m 1 "^0" tail`
+    sed "s/$RADEK//g" tail > tmp
+
+    #vycistit soubor od prebytecnych prazdnych radku
+    grep "^0" tmp > tail
+
+    #sniz pocitadlo ocasu o 1 potrebujeme mazat uz jen posledni
+    NUMT=`expr $NUMT - 1`
+  fi;
+
+  #ulozeni pozic ocasku + 1 ta se bude uz mazat
+  #vytvor frontu v souboru tail
+  echo "0;$XSET;$YSET" >> tail
+  NUMT=`expr $NUMT + 1`
+
+  #sezrani objektu
+  if [ "$OX" -eq "$XSET" ];
+  then
+   if [ "$OY" -eq "$YSET" ];
+   then
+     TAIL=`expr $TAIL + 1`
+     mplayer - < timer.wav 2>/dev/null 1>/dev/null &
+   fi;
+  fi;
+
+  #casovac vytvoreni noveho objektu
+  TIMER=`expr $TIMER + 1`
+  if [ "$TIMER" -eq 40 ];
+  then
+    echo -n -e "\033[$OY;`echo -n $OX`f "
+    OBJ=`expr $OBJ + 1`
+    TIMER=0
+  fi;
+
+  #kousnuti se do ocasu
+  #pri zmacknuti opacne klavesy se prida tail, proto se musi odecist CORRECT
+  #+1 tady mi neni uplne jasne, ale funguje to tak
+  NUMLINES=`expr $TAIL - $CORRECT + 1`
+  if [ `head -n $NUMLINES tail | grep -c "0;$XSET;$YSET"` -eq 2 ];
+  then
+    BITE=1
+    break
+  fi;
+
+  #vypis score
+  #korekce protoze ve skutecnosti je o jeden vice clanku hada
+  SCORE=`expr $TAIL - $CORRECT + 1`
+  echo -n -e "\033[24;0fSCORE: $SCORE"
+
+  #tisk kurzoru pomoci escape seqence na urcenou pozici
+  echo -n -e "\033[$YSET;`echo -n $XSET`f0"
+
+  #vraceni puvodni klavesy pokud se nezmacka nova
+  BCKUP=${KEY[0]}
+  #-t <cislo> = rychlost pohybu
+  read -a KEY -s -t 0.1 -n 1
+  if [ "$?" -eq 142 ];
+  then
+    KEY[0]=$BCKUP
+  fi;
+done
+
+#vypis score
+clear
+echo 'konec'
+[ "$BITE" -eq 1 ] && echo 'Kousl ses.'
+echo ''
+
+#tail je o 1 mensi protoze hlava jeste neni zapsana jako ocas v souboru
+if [ "$TAIL" -eq 2 ];
+  then
+  echo "Nasbiral jsi 0 bodu."
+  else
+  echo "Tvoje score je $SCORE bodu."
+fi;
+
+echo ''
+
+#uklid
+rm -f tail
+rm -f tmp
