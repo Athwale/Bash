@@ -1,0 +1,8 @@
+#!/bin/bash
+# Removes various history files from the system which include photo thumbnails of recently viewed images
+
+rm -rf /home/$USER/.thumbnails
+rm -rf /home/$USER/.cache/thumbnails
+rm -rf /home/$USER/ProgramFiles/tor-browser_en-US/Browser/.cache/thumbnails
+rm -rf /home/$USER/.TelegramDesktop/tdata/tdld
+exit 0
