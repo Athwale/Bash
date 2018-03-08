@@ -1,0 +1,8 @@
+alias la='ls -la'
+alias youtubedl_audio='youtube-dl --extract-audio --audio-format mp3'
+alias rmexif='exiftool -overwrite_original -all='
+alias dnsrestart='sudo service dnscrypt-proxy restart'
+alias extract_frames='mplayer -ao null -vo png '
+alias make_gif='convert -delay 5 -loop 0 *.png image.gif'
+alias optimize_gif='convert image.gif -fuzz 4% -layers Optimize final.gif'
+alias restartalza='sudo alsa force-reload'
