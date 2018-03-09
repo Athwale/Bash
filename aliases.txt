@@ -1,4 +1,4 @@
-alias la='ls -la'
+alias la='ls -alh'
 alias youtubedl_audio='youtube-dl --extract-audio --audio-format mp3'
 alias rmexif='exiftool -overwrite_original -all='
 alias dnsrestart='sudo service dnscrypt-proxy restart'
