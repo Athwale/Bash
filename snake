@@ -1,19 +1,24 @@
 #!/bin/bash
-#POTREBUJE mplayer K PREHRAVANI ZVUKU
 #chyby pri prechodu mezi horni a spodni hranici
 
 #fronta pro souradnice ocasu
 touch tail
 
-#pozice kurzoru
+#velikost okna
+SIZEX=$(tput cols)
+SIZEY=$(tput lines)
+#pozice kurzoru na zacatku
 XSET=0
-YSET=12
-#pocet uchovavanych ocasu
+YSET=$(($SIZEY / 2))
+#nastavuje pocatecni delku hada + 1
+#pocet uchovavanych ocasu + 1 kde je hlava
 TAIL=2
 #limitace psani do souboru s ocasem
 NUMT=0
+#prvni zmacknuta klavesa
+KEY='d'
 #zaloha klavesy pokud se zmackne spatna
-BKEY=p
+BKEY='p'
 #pocet umistovanych objektu
 OBJ=0
 #casovac vytvareni objektu
@@ -25,16 +30,24 @@ ALOCK=0
 DLOCK=0
 #kontrola kousnuti
 BITE=0
+BITWALL=0
 #promene pro kontrolu nekousnuti
 NUMLINES=0
 CORRECT=0
 #score
 SCORE=2
+#cast tela
+BODY="0"
+#jidlo
+FOOD="*"
+#rychlost
+SPEED=0.1
+
 
 #prvni klavesa pro zacatek cyklu
 clear
-echo -e "Ovladani pomoci klaves WASD a Q \n\n\n\n\n\n\n\n\n\n\n0"
-read -a KEY -s -n 1
+echo -e "Controls WASD and Q"
+tput cup $YSET $XSET && echo -n "$BODY"
 clear
 
 #smycka hry
@@ -44,24 +57,25 @@ do
   while [ "$OBJ" -ge 0 ];
   do
     OY=`date +"%N"`
-    OY=`expr  $OY % 23`
+    OY=`expr  $OY % $(($SIZEY - 2))`
 
     OX=`date +"%N"`
-    OX=`expr $OX % 79`
+    OX=`expr $OX % $(($SIZEX - 2))`
 
     #nechci kreslit objekty na okraji okna
-    if [ "$OX" -eq 0 ];
+    if [ "$OX" -eq 1 ];
     then
-      OX=1
+      OX=2
     fi;
 
-    if [ "$OY" -eq 0 ];
+    if [ "$OY" -eq 1 ];
     then
-      OY=1
+      OY=2
     fi;
 
-    #nakresli objekt na urcenych souradnicich
-    echo -n -e "\033[$OY;`echo -n $OX`f*"
+    #nakresli objekt na urcenych souradnicich prevedeni na string
+    tput cup $OY $OX && echo -n "$FOOD"
+    #echo -n -e "\033[$OY;`echo -n $OX`f*"
 
     #shozeni pocitadla
     OBJ=`expr $OBJ - 1`
@@ -90,9 +104,10 @@ do
   fi;
 
   BKEY=${KEY[0]}
-    if [ "$XSET" -gt 80 ];
+    if [ "$XSET" -gt $(($SIZEX - 1)) ];
     then
-      XSET=0
+      BITEWALL=1
+      break
     fi;
   ;;
 
@@ -113,7 +128,8 @@ do
   BKEY=${KEY[0]}
     if [ "$XSET" -lt 0 ];
     then
-      XSET=80
+      BITEWALL=1
+      break
     fi;
   ;;
 
@@ -132,9 +148,10 @@ do
   fi;
 
   BKEY=${KEY[0]}
-    if [ "$YSET" -gt 24 ];
+    if [ "$YSET" -gt $(($SIZEY - 1)) ];
     then
-      YSET=0
+      BITEWALL=1
+      break
     fi;
   ;;
 
@@ -155,7 +172,9 @@ do
   BKEY=${KEY[0]}
     if [ "$YSET" -lt 0 ];
     then
-      YSET=25
+      # nedovol kreslit hada na poslednim radku okna, tput kresli novy radek, posunul by okno
+      BITEWALL=1
+      break
     fi;
   ;;
 
@@ -177,7 +196,8 @@ do
     Y=`grep -m 1 "^0" tail | sed "s/.*;//g"`
 
     #smaz posledni ocas
-    echo -n -e "\033[$Y;`echo -n $X`f "
+    tput cup $Y $X && echo -n " "
+    #echo -n -e "\033[$Y;`echo -n $X`f "
 
     #smaz pouzity radek
     RADEK=`grep -m 1 "^0" tail`
@@ -201,15 +221,16 @@ do
    if [ "$OY" -eq "$YSET" ];
    then
      TAIL=`expr $TAIL + 1`
-     mplayer - < timer.wav 2>/dev/null 1>/dev/null &
+     aplay --quiet eat.wav &
    fi;
   fi;
 
   #casovac vytvoreni noveho objektu
   TIMER=`expr $TIMER + 1`
-  if [ "$TIMER" -eq 40 ];
+  if [ "$TIMER" -eq $SIZEX ];
   then
-    echo -n -e "\033[$OY;`echo -n $OX`f "
+    tput cup $OY $OX && echo -n " "
+    #echo -n -e "\033[$OY;`echo -n $OX`f "
     OBJ=`expr $OBJ + 1`
     TIMER=0
   fi;
@@ -227,15 +248,17 @@ do
   #vypis score
   #korekce protoze ve skutecnosti je o jeden vice clanku hada
   SCORE=`expr $TAIL - $CORRECT + 1`
-  echo -n -e "\033[24;0fSCORE: $SCORE"
+  tput cup $SIZEY 0 && echo -n "Score: $SCORE"
+  #echo -n -e "\033[24;0fSCORE: $SCORE"
 
   #tisk kurzoru pomoci escape seqence na urcenou pozici
-  echo -n -e "\033[$YSET;`echo -n $XSET`f0"
+  tput cup $YSET $XSET && echo -n "$BODY"
+  #echo -n -e "\033[$YSET;`echo -n $XSET`f0"
 
   #vraceni puvodni klavesy pokud se nezmacka nova
   BCKUP=${KEY[0]}
   #-t <cislo> = rychlost pohybu
-  read -a KEY -s -t 0.1 -n 1
+  read -a KEY -s -t $SPEED -n 1
   if [ "$?" -eq 142 ];
   then
     KEY[0]=$BCKUP
@@ -244,19 +267,18 @@ done
 
 #vypis score
 clear
-echo 'konec'
-[ "$BITE" -eq 1 ] && echo 'Kousl ses.'
-echo ''
+aplay --quiet eat.wav &
+echo 'End'
+[ "$BITE" -eq 1 ] && echo "You bit yourself and died. \n"
+[ "$BITEWALL" -eq 1 ] && echo -e "You bit the wall and died. \n"
 
 #tail je o 1 mensi protoze hlava jeste neni zapsana jako ocas v souboru
 if [ "$TAIL" -eq 2 ];
   then
-  echo "Nasbiral jsi 0 bodu."
+  echo "You got 0 points"
   else
-  echo "Tvoje score je $SCORE bodu."
+  echo -e "You have $SCORE points. \n"
 fi;
-
-echo ''
 
 #uklid
 rm -f tail
