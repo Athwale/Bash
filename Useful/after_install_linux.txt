@@ -1,0 +1,215 @@
+Linux mint modifications (applicable to most ubuntu based systems)
+---------------------------------------------------------------------------------------------------------
+- Install firewall 
+  sudo apt-get install gufw
+- Set firewall rules from backup
+- Inside firewall set IN deny, OUT allow
+- Turn off logging in gufw settings (saves disk writes on some devices RPi) 
+
+- Modify /etc/passwd
+  sudo nano /etc/passwd
+- Disable shell for account except root, speechdispatcher, libuuid and your user
+- Set the rest to /bin/false 
+- Prevents potential attacker from logging in
+  
+- Lock accounts in /etc/shadow excet yours (passwd -l účet).
+  Locked accounts keep passwords but logging in with password is not possible. Even root can be locked, we use sudo.
+
+  ! locked
+  * without password, login not possible, can not be enabled (passwd -u account).
+
+- Example:  
+  root:!$6$Q...:7:::
+  daemon:!*:15819:0:99999:7:::
+  sync:!*:15819:0:99999:7:::
+  ...
+  alena:$6$v...:7:::
+
+- OBSOLETE
+- Turns on numlock on login screen
+- sudo apt-get install numlockx
+  
+- Add errors=remount-ro,noatime to root disk in fstab, prevents writing last access time onto disk, faster disk use.
+  
+- Edit sudo nano /etc/sysctl.conf change packet behavior as needed.
+- Install sudo apt-get install preload (faster program launch)
+- Install chkrootkit and rkhunter
+  Run:
+  rkhunter --update
+  rkhunter --check
+  chkrootkit
+  
+- Set login screen to Simple Greeter (from backup)
+- Remove desktop icons (desktop settings in Menu)
+- Set window manager to macro (because of appearance of icons and desktops settings)
+- Turn off screensaver + others in power management settings.
+- Install OTR for pidgin (http://community.linuxmint.com/software/view/pidgin-otr)
+- Turn off pidgin popup notifications (pidgin plugins)
+- Install freefilesync (File sync for NAS)
+- Install fslint (duplicate file search)
+- Install nmap
+- Install vnc4server and openssh-server
+- Install youtube-dl and libav-tools for mp3 conversion
+- Set Alt+Shift for keyboard layout switch (Keyboard - Layouts - Options)
+- Install apparmor, apparmor-profiles, apparmor-notify
+- Add theme absolute from backup
+- Set keyboard shotcutsd for screen switching (Keyboard shortcuts)
+- Turn off Recenly used - replace file /home/$USER/.local/share/recently-used.xbel with a folder
+- Download TOR
+- Turn off automatic disku action after mount (Menu - File management - Media) 
+- Replace .thumbnail and ./cache/thumbnails with a link to /dev/null in Home/$USER
+	su root
+	rm -rf .thumbnails/
+	ln -s /dev/null /home/$USER/.thumbnails
+	
+- If the sound output is messy kill pulseaudio (pulseaudio --kill) before that some sound has to be played.
+
+- Install dnscrypt-proxy (DNS request encryption).
+  sudo add-apt-repository ppa:anton+/dnscrypt
+  sudo apt-get update
+  sudo apt-get install dnscrypt-proxy
+
+  After all steps: Set DNS Servers in network manager to 127.0.0.1 
+  Set automatic DHCP addresses only, and IPv6 set to Ignore
+  Set up dnsctypt:
+ 
+  sudo systemctl edit --full dnscrypt-proxy.socket
+  Set: 
+  [Socket]
+  ListenStream=127.0.0.2:5356 
+  ListenDatagram=127.0.0.2:5356
+  Port 53 needs root access, 5356 does not
+  --full does not create additional .d folders in /etc/systemd/system and
+  directly edits the whole config file.
+
+  Change resolver in:
+  sudo systemctl edit -full dnscrypt-proxy.service
+  Set:
+  [Service]
+  Environment="DNSCRYPT_PROXY_RESOLVER_NAME1=dnscrypt.eu-dk"
+  Set the same resolver in sudo nano /etc/default/dnscrypt-proxy
+  
+  Lock _dnscrypt-proxy in shadow
+  
+  Set up dnsmasq to use dnscrypt on port 5356 and to listen on 127.0.0.1
+  sudo apt-get install dnsmasq (dnsmasq may not be fully installed) We are using
+  it as our local resolver.
+  In sudo nano /etc/dnsmasq.conf paste this:
+  # Don't read the hostnames in /etc/hosts.
+  no-hosts
+
+  # Do not provide DHCP or TFTP on the loopback interface.
+  no-dhcp-interface=lo
+
+  # Only listen on the loopback interface.
+  listen-address=127.0.0.1
+
+  # Only bind to interfaces dnsmasq is listening on.
+  bind-interfaces
+
+  # Never forward addresses in the non-routed address spaces.
+  bogus-priv
+
+  # Don't read /etc/resolv.conf.
+  no-resolv
+
+  # Reject (and log) addresses from upstream nameservers which are in
+  # the private IP ranges. This blocks an attack where a browser behind
+  # a firewall is used to probe machines on the local network.
+  stop-dns-rebind
+
+  # Exempt 127.0.0.0/8 from rebinding checks. This address range is
+  # returned by realtime black hole servers, so blocking it may disable
+  # these services.
+  rebind-localhost-ok
+
+  # Never forward plain names (without a dot or domain part).
+  domain-needed
+
+  # Upstream server is dnscrypt-proxy on local machine.
+  server=127.0.0.2#5356
+
+  # Set the cache size here. If you don't use spam blocking add-ons such
+  # Adblock Plus or Ghostery, you may want to increase this value as you
+  # will be resolving more domain names.
+  cache-size=1000
+
+  # Pass through DNSSEC validation results from dnscrypt-proxy.
+  proxy-dnssec
+
+  Set up NetworkManager to NOT use dnsmasq:
+  sudo nano /etc/NetworkManager/NetworkManager.conf
+  dns change to #dns=dnsmasq
+  This prevents spawning two dnsmasq instances in the system.
+  Disable ofono in the same file, useless too
+
+  Set 127.0.0.1 into sudo nano /etc/resolv.conf
+  (Changes in this file immediately affect the system)
+  If net does not work set 8.8.8.8 in this file
+
+  Start dnscrypt service:
+  sudo killall dnsmasq (otherwise may cause BIND error)
+  sudo systemctl daemon-reload
+  sudo systemctl enable dnscrypt-proxy.service
+  sudo systemctl enable dnscrypt-proxy.socket
+  sudo systemctl enable dnscrypt-proxy
+  sudo systemctl start dnscrypt-proxy
+  sudo systemctl start dnsmasq
+
+  Check status by:
+  sudo systemctl status dnscrypt-proxy
+  sudo systemctl status dnsmasq
+  dnscrypt-proxy
+  
+  If dnscrypt-proxy can not retrieve server certificates, try using different
+  resolver from:
+  libreoffice /usr/share/dnscrypt-proxy/dnscrypt-resolvers.csv
+  
+  Check successful instalation on https://dnsleaktest.com/
+
+What to back up:
+---------------------------------------------------------------------------------------------------------
+- .bashrc
+- .mozzila (whole firefox settings including plugins)
+- .bash_logout
+- .thunderbird
+- .ssh
+- .vnc
+
+Useful commands:
+---------------------------------------------------------------------------------------------------------
+Icon size can be changed in filemanager - works for desktop icons too (after logout)
+In Gedit settings turn off file browser panel plugin (makes it faster)
+
+Terminal:
+CTRL y - paste
+CTRL l - clear
+CTRL d - end of file
+CTRL c - end program
+
+usr/share/doc - program documentation
+
+apropos "string" - search for commands with this functionality
+info, help, man, xman - various man pages
+type command name - shows where the command is stored or if it is a built in one
+whereis - similar to type
+which - finds file
+locate - also finds files
+
+who - logged in users
+w, finger - also logged in users but more details
+
+lists network ports in use: 
+sudo lsof -i (-P -n for port numbers)
+sudo netstat -plunt
+sudo netstat -tap Shows established connections
+
+Finds all network devices
+sudo nmap -sP 192.168.88.0/24
+
+Finds all open ports:
+sudo nmap -v -sT address
+
+sudo nmap -n -PN -sT -sU -p- remote_host
+
+apt-cache search name - finds packages
