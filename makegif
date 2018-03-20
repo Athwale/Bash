@@ -1,0 +1,175 @@
+#!/bin/bash
+# This tool makes a gif from a video
+
+video=$1
+response='Y'
+reverseImgDir="ReverseImgs"
+gifspeed=5
+
+function confirm() {
+  while true
+    do
+      echo -n " -- Confirm y/n: "
+      read -a response -s -n 1
+      echo "$response"
+      case "$response" in
+        n)
+          return 1
+          ;;
+        y)
+          return 0
+          ;;
+        *)
+          ;;
+      esac;
+    done
+}
+
+# Test number of arguments 
+if [ -z $1 ]; 
+then
+  echo "Provide 1 video file argument"
+  exit 1
+elif [ $# -gt 1 ];
+then
+  echo "Only one video file argument allowed."
+  exit 2
+fi
+# Test the argument is a file
+if [ ! -f $video ];
+then
+  echo "Argument is not a file"
+  exit 3
+fi
+
+# Make a working directory for the gif making
+gifdir="GIF_${video}"
+echo -e "\nResult will be in $gifdir"
+if [ -e $gifdir ];
+then
+  echo "Gif has probably already been made, overwrite?"
+  confirm
+  if [ $? -eq 1 ];
+  then
+    echo "Abort"
+    exit 0
+  else
+    # Erase gif dir if it already exists
+    rm -rf ./$gifdir
+  fi
+fi
+
+# Make directory for the extracted frames and copy the video there
+mkdir ./$gifdir
+cp $video $gifdir && cd $gifdir
+
+# Extract frames
+echo -e "\nExtracting video frames..."
+mplayer -ao null -vo png -msglevel all=-1 $video 2>/dev/null
+[ $? -eq 0 ] && echo "Extraction successful"
+echo "Removing temporary video file"
+rm $video
+
+# Open pix to edit files
+echo -e "\nOpening photo editor"
+pix . 2>/dev/null
+if [ ! $? -eq 0 ];
+then
+  echo "Error occured"
+  exit 2
+fi
+
+# Rename files using increasing numbers
+echo "Renaming files"
+number=0
+for file in $(ls .) 
+do
+  # We are extracting png so we know it will be png
+  mv $file "$number.png"
+  number=$(( number + 1 ))
+done
+
+# Ask whether to add reversed images
+echo "Add images in reverse order?"
+confirm
+if [ $? -eq 0 ];
+then
+  # Create reversed images
+  echo "Creating images in reverse order"
+  # Make new tem directory for the reversing and copy all images in there
+  mkdir ./$reverseImgDir
+  cp *.png ./$reverseImgDir
+  cd ./$reverseImgDir
+  # Count files
+  numOfFiles=$(ls . | wc -l)
+  # Remove last file because we only need one in the gif
+  # Files begin with 0, so we subtract 1. For 7 files, the last one is 6.png
+  # ls -v adds natural ordering files will be sorted numerically
+  rm "$(( $numOfFiles - 1 )).png"
+  for file in $(ls -rv .) 
+  do
+    # Files are sorted from highest number down down
+    mv "$file" "$numOfFiles.png"
+    # numOfFiles is also used as an incrementing counter for renaming here
+    numOfFiles=$(( $numOfFiles + 1 ))
+  done
+  # Move the reversed files back into working dir and remove reverse directory
+  mv *.png .. && cd ..
+  rmdir ./$reverseImgDir
+  echo "Reverse images created"
+fi
+
+# Create the actual gif
+echo -e "\nSet up gif:"
+
+while true
+do
+  echo -n "Set gif speed (1 - 9) lower number = faster (3 is usually correct): "
+  read -a gifspeed -s -n 1
+  echo "$gifspeed"
+  # Test if the input is a number
+  [ $gifspeed -lt 9 ] 2>/dev/null
+  if [ $? -eq 0 ];
+  then
+    break
+  fi
+done
+
+# Make the gif
+echo "Making gif..."
+# Feeding the convert with naturally ordered list of files, otherwise numbers do not follow as a human would expect
+convert -delay $gifspeed -loop 0 $(ls -v .) result.gif
+
+# Print size
+echo "Gif size: $(du -h result.gif)"
+
+# Optimize?
+echo -e "\nOptimize gif?"
+confirm
+if [ $? -eq 0 ];
+then
+  echo "Optimizing gif..."
+  convert result.gif -fuzz 4% -layers Optimize optimized.gif && echo "Gif optimized"
+fi
+
+# Do you want to keep the files?
+echo -e "\nKeep images?"
+confirm
+if [ $? -eq 0 ];
+then
+  echo "Keeping images"
+  exit 0
+else
+  echo "Erasing images"
+  rm *.png
+  exit 0
+fi
+
+
+
+
+
+
+
+
+
