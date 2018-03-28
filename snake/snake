@@ -30,7 +30,7 @@ ALOCK=0
 DLOCK=0
 #kontrola kousnuti
 BITE=0
-BITWALL=0
+BITEWALL=0
 #promene pro kontrolu nekousnuti
 NUMLINES=0
 CORRECT=0
