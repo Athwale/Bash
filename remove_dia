@@ -1,0 +1,80 @@
+#!/bin/bash
+# Goes thrugh all files in current folder and subfolders and renames them by replacing 
+# characters with diacritics (á č ď é ě í ň ó ř š ť ú ů ý ž) with ascii chars.
+# Also can replace spaces with underscores.
+
+BAD_ARG=2
+s_flag=0
+v_flag=0
+
+function replace_spaces() {
+  # Replace multiple spaces with just one
+  nospace_name=$(echo "$1" | tr -s [:space:])
+  # Replace one space with underscore
+  nospace_name=$(echo "$nospace_name" | tr -s " " "_") 
+  # Works as return
+  echo "$nospace_name"
+}
+
+function replace_dia() {
+ # Replaces diacritics
+ name=$(echo "$1" | iconv -f utf8 -t ascii//TRANSLIT)
+ echo "$name"
+}
+
+function rename() {
+  # First rename all directories in the current directory ls lists directories without any options
+  # Change IFS to endline
+  IFS=$(echo -en "\n\b")
+  for file in $(ls -1 $1)
+  do
+    # Replace spaces with underscores
+    [ $s_flag -eq 0 ] && newname=$(replace_spaces "$file")
+    # Remove diacritics
+    if [ $s_flag -eq 0 ]
+    then
+      newname=$(replace_dia "$newname")
+    else
+      # Newname variable does not exist yet because spaces were not removed
+      newname=$(replace_dia "$file")
+    fi
+    # Rename the directory if the name has been changed
+    if [ "$file" != "$newname" ]
+    then
+      if [ $v_flag -eq 1 ] && [ -d "$1/$file" ]
+      then
+        echo "RENAMING DIRECTORY: $file TO: $newname"
+      elif [ $v_flag -eq 1 ] && [ -f "$1/$file" ]
+      then
+        echo "RENAMING FILE: $file TO: $newname"
+      fi
+      mv "$1/$file" "$1/$newname"
+    fi
+    # If we found a directory, recursively call this function inside, the newname variable exists every time and contains
+    # either unchanged name or the new name the file has been renamed to.
+    if [ -d "$1/$newname" ]
+    then
+      rename "$1/$newname"
+    fi    
+  done
+}
+
+while getopts 'sv' option
+do
+  case $option in 
+    s)
+      s_flag=1
+      ;;
+    v)
+      v_flag=1
+      ;;
+    ?)
+      echo "Usage: $(basename $0) [-s] [-v]"
+      echo "-s Do not replace spaces with underscores" 
+      echo "-v Verbose, print each modified filename" 
+      exit $BAD_ARG
+      ;;
+  esac
+done
+
+rename .
